@@ -511,7 +511,7 @@ function saveProfile(){
     weekGoal: +document.getElementById('s-goal').value||3,
     created: Date.now()
   };
-  if(!p.height||!p.age){alert('Bitte Alter und Größe eingeben!');return;}
+  if(!p.height||!p.age){showToast('Bitte Alter und Größe eingeben!');return;}
   DB.set('profile',p);
   // Save initial weight
   const bd = DB.get('bodydata');
@@ -912,7 +912,8 @@ function initDashCharts(){
 // ════════════════════════════════════════
 //  RUN MODULE
 // ════════════════════════════════════════
-  
+
+function renderRun(){
   const runs=DB.get('runs');
   const ws=weekStart().toISOString().slice(0,10);
   const totalKm=runs.filter(r=>r.date>=ws).reduce((s,r)=>s+r.km,0);
@@ -1042,7 +1043,7 @@ ${(()=>{
       </div>`;
     }).join('')}
   </div>`;
-
+}
 function initRunChart(){
   const runs=DB.get('runs').slice(0,10).reverse();
   if(runs.length<2)return;

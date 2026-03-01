@@ -602,202 +602,6 @@ function trendArrow(current, prev, higherIsBetter=true){
 }
 function avgOf(arr){ return arr.length?Math.round(arr.reduce((s,v)=>s+v,0)/arr.length*10)/10:null; }
 
-// ════════════════════════════════════════
-//  LIVE RUN
-// ════════════════════════════════════════
-function haversine(lat1,lon1,lat2,lon2){
-  const R=6371;
-  const dLat=(lat2-lat1)*Math.PI/180;
-  const dLon=(lon2-lon1)*Math.PI/180;
-  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+
-    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
-    Math.sin(dLon/2)*Math.sin(dLon/2);
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function fmtTime(sec){
-  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
-  if(h>0)return`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  return`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}
-
-async function startLiveRun(){
-  if(!navigator.geolocation){showToast('GPS nicht verfügbar','error');return;}
-  // Request WakeLock to keep screen on
-  let wakeLock=null;
-  try{if('wakeLock' in navigator)wakeLock=await navigator.wakeLock.request('screen');}catch(e){}
-
-  liveRun={startTime:Date.now(),coords:[],distance:0,watchId:null,wakeLock,elapsed:0,timerInterval:null};
-
-  // Start GPS
-  liveRun.watchId=navigator.geolocation.watchPosition(pos=>{
-    const {latitude:lat,longitude:lon,accuracy}=pos.coords;
-    if(accuracy>30)return; // ignore inaccurate points
-    const prev=liveRun.coords[liveRun.coords.length-1];
-    if(prev){
-      const d=haversine(prev.lat,prev.lon,lat,lon);
-      if(d>0.005)liveRun.distance+=d; // ignore <5m jitter
-    }
-    liveRun.coords.push({lat,lon,t:Date.now()});
-    updateLiveRunDisplay();
-  },{enableHighAccuracy:true,maximumAge:2000,timeout:10000});
-
-  // Start timer
-  liveRun.timerInterval=setInterval(()=>{
-    liveRun.elapsed=Math.round((Date.now()-liveRun.startTime)/1000);
-    updateLiveRunDisplay();
-  },1000);
-
-  showView('run');
-}
-
-function updateLiveRunDisplay(){
-  const el=document.getElementById('live-run-time');
-  const elKm=document.getElementById('live-run-km');
-  const elPace=document.getElementById('live-run-pace');
-  const elGps=document.getElementById('live-run-gps');
-  if(!el||!liveRun)return;
-  el.textContent=fmtTime(liveRun.elapsed);
-  elKm&&(elKm.textContent=liveRun.distance.toFixed(2)+' km');
-  if(elPace){
-    const pace=liveRun.distance>0.1?liveRun.elapsed/liveRun.distance:0;
-    elPace.textContent=pace>0?fmtPace(1,pace):'–:––';
-  }
-  if(elGps){
-    const pts=liveRun.coords.length;
-    elGps.textContent=pts>0?'📡 GPS aktiv':'📡 Suche…';
-  }
-}
-
-function stopLiveRun(){
-  if(!liveRun)return;
-  clearInterval(liveRun.timerInterval);
-  navigator.geolocation.clearWatch(liveRun.watchId);
-  if(liveRun.wakeLock)try{liveRun.wakeLock.release();}catch(e){}
-  // Start pulse flow
-  startPulseFlow();
-}
-
-// ── PULSE FLOW ──
-function startPulseFlow(){
-  pulseFlowStep=1;
-  pulseFlowCount=3;
-  capturedPulsLoad=null;
-  showView('run');
-  pulseFlowInterval=setInterval(()=>{
-    pulseFlowCount--;
-    if(pulseFlowCount<=0){
-      clearInterval(pulseFlowInterval);
-      pulseFlowStep=2; // show 15s measurement timer
-      pulseFlowCount=15;
-      showView('run');
-      pulseFlowInterval=setInterval(()=>{
-        pulseFlowCount--;
-        updatePulseFlowTimer();
-        if(pulseFlowCount<=0){
-          clearInterval(pulseFlowInterval);
-          pulseFlowStep=3; // show input for load pulse
-          showView('run');
-        }
-      },1000);
-    } else {
-      updatePulseFlowCountdown();
-    }
-  },1000);
-}
-
-function updatePulseFlowCountdown(){
-  const el=document.getElementById('pulse-countdown-num');
-  if(el)el.textContent=pulseFlowCount;
-}
-
-function updatePulseFlowTimer(){
-  const el=document.getElementById('pulse-timer-num');
-  if(el)el.textContent=pulseFlowCount;
-  const bar=document.getElementById('pulse-timer-bar');
-  if(bar)bar.style.width=Math.round(pulseFlowCount/15*100)+'%';
-}
-
-function savePulseLoad(){
-  const v=+document.getElementById('pulse-load-input').value;
-  if(!v){showToast('Bitte Puls eingeben!','error');return;}
-  capturedPulsLoad=v;
-  pulseFlowStep=4; // 60s recovery countdown
-  pulseFlowCount=60;
-  showView('run');
-  pulseFlowInterval=setInterval(()=>{
-    pulseFlowCount--;
-    updatePulseRecoveryTimer();
-    if(pulseFlowCount<=0){
-      clearInterval(pulseFlowInterval);
-      pulseFlowStep=5; // show input for recovery pulse + 15s timer
-      pulseFlowCount=15;
-      showView('run');
-      pulseFlowInterval=setInterval(()=>{
-        pulseFlowCount--;
-        updatePulseRecoveryMeasureTimer();
-        if(pulseFlowCount<=0){
-          clearInterval(pulseFlowInterval);
-          pulseFlowStep=6;
-          showView('run');
-        }
-      },1000);
-    }
-  },1000);
-}
-
-function updatePulseRecoveryTimer(){
-  const el=document.getElementById('pulse-recovery-countdown');
-  if(el)el.textContent=pulseFlowCount;
-  const bar=document.getElementById('pulse-recovery-bar');
-  if(bar)bar.style.width=Math.round(pulseFlowCount/60*100)+'%';
-}
-
-function updatePulseRecoveryMeasureTimer(){
-  const el=document.getElementById('pulse-recovery-timer');
-  if(el)el.textContent=pulseFlowCount;
-  const bar=document.getElementById('pulse-recovery-measure-bar');
-  if(bar)bar.style.width=Math.round(pulseFlowCount/15*100)+'%';
-}
-
-function saveLiveRunComplete(){
-  const recovVal=+document.getElementById('pulse-recovery-input')?.value||null;
-  const km=Math.round(liveRun.distance*100)/100;
-  const elapsed=liveRun.elapsed;
-  const timeStr=fmtTime(elapsed);
-  const runs=DB.get('runs');
-  runs.unshift({
-    date:today(),
-    km,
-    time:timeStr,
-    pulsLoad:capturedPulsLoad,
-    pulsRecovery:recovVal,
-    feeling:-1,
-    gps:true
-  });
-  runs.sort((a,b)=>b.date.localeCompare(a.date));
-  DB.set('runs',runs);
-  liveRun=null;
-  pulseFlowStep=0;
-  capturedPulsLoad=null;
-  showToast('Lauf gespeichert! 🏃','success');
-  showView('run');
-}
-
-function skipPulseFlow(){
-  clearInterval(pulseFlowInterval);
-  // Save run without pulse
-  const km=Math.round(liveRun.distance*100)/100;
-  const elapsed=liveRun.elapsed;
-  const runs=DB.get('runs');
-  runs.unshift({date:today(),km,time:fmtTime(elapsed),pulsLoad:null,pulsRecovery:null,feeling:-1,gps:true});
-  runs.sort((a,b)=>b.date.localeCompare(a.date));
-  DB.set('runs',runs);
-  liveRun=null;pulseFlowStep=0;capturedPulsLoad=null;
-  showToast('Lauf gespeichert!','success');
-  showView('run');
-}
-
 
 // ════════════════════════════════════════
 //  PR TRACKING
@@ -930,12 +734,7 @@ let calOffset=0;
 let restTimerInterval=null;
 let restTimerTotal=120;
 let restTimerLeft=120;
-// Live Run
-let liveRun=null; // {startTime, coords[], distance, watchId, wakeLock, timerInterval}
-let pulseFlowStep=0; // 0=off 1=countdown 2=loadInput 3=recoveryCountdown 4=recoveryInput
-let pulseFlowInterval=null;
-let pulseFlowCount=0;
-let capturedPulsLoad=null;
+
 
 function showView(v){
   currentView=v;
@@ -1113,95 +912,7 @@ function initDashCharts(){
 // ════════════════════════════════════════
 //  RUN MODULE
 // ════════════════════════════════════════
-function renderRun(){
-  // ── LIVE RUN SCREEN ──
-  if(liveRun){
-    return`<div class="live-run-screen">
-      <div class="live-run-label">LAUFZEIT</div>
-      <div class="live-run-time" id="live-run-time">${fmtTime(liveRun.elapsed)}</div>
-      <div class="live-run-km" id="live-run-km">${liveRun.distance.toFixed(2)} km</div>
-      <div class="live-run-stats">
-        <div class="live-run-stat">
-          <div class="live-run-stat-val" id="live-run-pace">–:––</div>
-          <div class="live-run-stat-lbl">min/km</div>
-        </div>
-        <div class="live-run-stat">
-          <div class="live-run-stat-val" id="live-run-gps" style="font-size:16px;">📡 Suche…</div>
-          <div class="live-run-stat-lbl">GPS</div>
-        </div>
-      </div>
-      <button class="stop-btn" onclick="stopLiveRun()">■</button>
-      <div style="margin-top:16px;font-size:12px;color:var(--muted2);">Tippe ■ zum Stoppen</div>
-      <div style="margin-top:8px;font-size:11px;color:var(--muted);text-align:center;">⚠️ Bildschirm anlassen für GPS-Tracking</div>
-    </div>`;
-  }
-
-  // ── PULSE FLOW SCREENS ──
-  if(pulseFlowStep===1){
-    return`<div class="pulse-flow-screen">
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Gut gelaufen! 💪</div>
-      <div class="pulse-instruction">Jetzt Belastungspuls messen.<br><b>15 Sekunden Puls zählen × 4</b></div>
-      <div class="pulse-sub">Zeige- und Mittelfinger an den Hals<br>oder Handgelenk legen</div>
-      <div class="pulse-countdown" id="pulse-countdown-num">${pulseFlowCount}</div>
-      <div style="font-size:14px;color:var(--muted2);margin-top:8px;">Messung startet in...</div>
-      <button class="btn btn-ghost" style="margin-top:32px;" onclick="skipPulseFlow()">Überspringen</button>
-    </div>`;
-  }
-
-  if(pulseFlowStep===2){
-    return`<div class="pulse-flow-screen">
-      <div style="font-size:18px;font-weight:700;margin-bottom:16px;">Jetzt zählen! 🫀</div>
-      <div class="pulse-instruction">Puls an Hals oder Handgelenk zählen</div>
-      <div class="pulse-timer-ring" id="pulse-timer-num">${pulseFlowCount}</div>
-      <div style="width:100%;margin:16px 0;"><div style="background:var(--card2);border-radius:4px;height:6px;overflow:hidden;"><div id="pulse-timer-bar" style="height:100%;background:var(--accent);border-radius:4px;transition:width 1s linear;width:${Math.round(pulseFlowCount/15*100)}%;"></div></div></div>
-      <div class="pulse-sub">Ergebnis × 4 = Herzschläge/min</div>
-      <button class="btn btn-ghost" style="margin-top:32px;" onclick="skipPulseFlow()">Überspringen</button>
-    </div>`;
-  }
-
-  if(pulseFlowStep===3){
-    return`<div class="pulse-flow-screen">
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Wie viele Schläge?</div>
-      <div class="pulse-instruction">Gezählte Schläge × 4 eingeben</div>
-      <input class="input" id="pulse-load-input" type="number" placeholder="z.B. 156" style="font-size:28px;text-align:center;max-width:160px;margin:16px 0;" autofocus>
-      <div class="pulse-sub">= Belastungspuls direkt nach dem Lauf</div>
-      <button class="btn btn-primary" style="margin-top:24px;max-width:240px;" onclick="savePulseLoad()">Weiter →</button>
-      <button class="btn btn-ghost" style="margin-top:12px;" onclick="skipPulseFlow()">Überspringen</button>
-    </div>`;
-  }
-
-  if(pulseFlowStep===4){
-    return`<div class="pulse-flow-screen">
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Belastungspuls: <span style="color:var(--accent);">${capturedPulsLoad} bpm</span></div>
-      <div class="pulse-instruction">Jetzt <b>1 Minute warten</b><br>dann Erholungspuls messen</div>
-      <div class="pulse-countdown" id="pulse-recovery-countdown" style="color:var(--blue);">${pulseFlowCount}</div>
-      <div style="width:100%;margin:16px 0;"><div style="background:var(--card2);border-radius:4px;height:6px;overflow:hidden;"><div id="pulse-recovery-bar" style="height:100%;background:var(--blue);border-radius:4px;transition:width 1s linear;width:${Math.round(pulseFlowCount/60*100)}%;"></div></div></div>
-      <div class="pulse-sub">Sekunden bis zur nächsten Messung</div>
-      <button class="btn btn-ghost" style="margin-top:32px;" onclick="skipPulseFlow()">Überspringen</button>
-    </div>`;
-  }
-
-  if(pulseFlowStep===5){
-    return`<div class="pulse-flow-screen">
-      <div style="font-size:18px;font-weight:700;margin-bottom:16px;">Erholungspuls messen! 🫀</div>
-      <div class="pulse-timer-ring" id="pulse-recovery-timer" style="color:var(--green);">${pulseFlowCount}</div>
-      <div style="width:100%;margin:16px 0;"><div style="background:var(--card2);border-radius:4px;height:6px;overflow:hidden;"><div id="pulse-recovery-measure-bar" style="height:100%;background:var(--green);border-radius:4px;transition:width 1s linear;width:${Math.round(pulseFlowCount/15*100)}%;"></div></div></div>
-      <div class="pulse-sub">15 Sekunden zählen × 4</div>
-      <button class="btn btn-ghost" style="margin-top:32px;" onclick="skipPulseFlow()">Überspringen</button>
-    </div>`;
-  }
-
-  if(pulseFlowStep===6){
-    return`<div class="pulse-flow-screen">
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Erholungspuls eingeben</div>
-      <div class="pulse-sub" style="margin-bottom:16px;">Belastungspuls war: <b style="color:var(--accent);">${capturedPulsLoad} bpm</b></div>
-      <input class="input" id="pulse-recovery-input" type="number" placeholder="z.B. 120" style="font-size:28px;text-align:center;max-width:160px;margin:8px 0;" autofocus>
-      <div class="pulse-sub">Erholungspuls ~1 Min. nach dem Lauf</div>
-      <button class="btn btn-primary" style="margin-top:24px;max-width:240px;" onclick="saveLiveRunComplete()">Lauf speichern ✓</button>
-      <button class="btn btn-ghost" style="margin-top:12px;" onclick="skipPulseFlow()">Ohne Erholungspuls speichern</button>
-    </div>`;
-  }
-
+  
   const runs=DB.get('runs');
   const ws=weekStart().toISOString().slice(0,10);
   const totalKm=runs.filter(r=>r.date>=ws).reduce((s,r)=>s+r.km,0);
@@ -1214,10 +925,7 @@ function renderRun(){
   return`
   <div class="view-header">
     <div><div class="view-title">Laufen</div><div class="header-sub">${totalKm.toFixed(1)} km diese Woche</div></div>
-<div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" style="width:auto;padding:10px 16px;font-size:13px;background:var(--green);" onclick="startLiveRun()">▶ Start</button>
-      <button class="btn btn-primary" style="width:auto;padding:10px 16px;font-size:13px;" onclick="openModal('addRun')">+ Manuell</button>
-    </div>  </div>
+<button class="btn btn-primary" style="width:auto;padding:10px 18px;font-size:14px;" onclick="openModal('addRun')">+ Lauf</button> </div>
 
   <div class="section">
     <div class="suggest-card">
@@ -1334,7 +1042,6 @@ ${(()=>{
       </div>`;
     }).join('')}
   </div>`;
-}
 
 function initRunChart(){
   const runs=DB.get('runs').slice(0,10).reverse();

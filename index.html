@@ -428,50 +428,40 @@ const DB = {
 // EXERCISE LIBRARY
 // ════════════════════════════════════════
 const EXERCISES = [
-{name:'Bankdrücken',primary:['Brust'],secondary:['Trizeps','Schultern'],cat:'Brust'},
-{name:'Schrägbankdrücken',primary:['Brust'],secondary:['Trizeps','Schultern'],cat:'Brust'},
-{name:'Schrägbankdrücken (Kurzhantel)',primary:['Brust'],secondary:['Trizeps','Schultern'],cat:'Brust'},
-{name:'Brustpresse (Maschine)',primary:['Brust'],secondary:['Trizeps'],cat:'Brust'},
+{name:'Bankdrücken (Langhantel)',primary:['Brust'],secondary:['Trizeps','Schultern'],cat:'Brust'},
+{name:'Bankdrücken (Kurzhantel)',primary:['Brust'],secondary:['Trizeps','Schultern'],cat:'Brust'},
+{name:'Brustpresse (Maschine)',primary:['Brust'],secondary:['Trizeps','Schultern'],cat:'Brust'},
 {name:'Fliegende (Kabel)',primary:['Brust'],secondary:['Schultern'],cat:'Brust'},
 {name:'Fliegende (Kurzhantel)',primary:['Brust'],secondary:['Schultern'],cat:'Brust'},
-{name:'Fliegende (Maschine)',primary:['Brust'],secondary:[],cat:'Brust'},
+{name:'Fliegende (Maschine)',primary:['Brust'],secondary:['Schultern'],cat:'Brust'},
 {name:'Dips',primary:['Brust','Trizeps'],secondary:['Schultern'],cat:'Brust'},
 {name:'Liegestütze',primary:['Brust'],secondary:['Trizeps','Schultern'],cat:'Brust'},
-{name:'Kreuzheben',primary:['Unterer Rücken','Gesäß'],secondary:['Hamstrings','Trapez','Unterarme'],cat:'Rücken'},
+{name:'Rumänisches Kreuzheben (Langhantel)',primary:['Unterer Rücken','Gesäß','Hamstrings'],secondary:[],cat:'Hintere Kette'},
+{name:'Rumänisches Kreuzheben (Kurzhantel)',primary:['Unterer Rücken','Gesäß','Hamstrings'],secondary:[],cat:'Hintere Kette'},
 {name:'Klimmzüge',primary:['Lats'],secondary:['Bizeps','Trapez'],cat:'Rücken'},
-{name:'Latzug',primary:['Lats'],secondary:['Bizeps'],cat:'Rücken'},
-{name:'Rudern (Kabelzug)',primary:['Lats','Trapez'],secondary:['Bizeps','Hintere Schulter'],cat:'Rücken'},
+{name:'Latzug',primary:['Lats'],secondary:['Bizeps','Trapez'],cat:'Rücken'},
+{name:'Breites Rudern (Kabelzug)',primary:['Trapez'],secondary:['Bizeps','Lats'],cat:'Rücken'},
 {name:'Enges Rudern (Kabelzug)',primary:['Lats'],secondary:['Bizeps'],cat:'Rücken'},
-{name:'T-Bar Rudern',primary:['Lats','Trapez'],secondary:['Bizeps','Unterer Rücken'],cat:'Rücken'},
-{name:'Rudern (Maschine)',primary:['Lats','Trapez'],secondary:['Bizeps'],cat:'Rücken'},
-{name:'Rudern (Kurzhantel)',primary:['Lats','Trapez'],secondary:['Bizeps'],cat:'Rücken'},
-{name:'Reverse Flys (Kabel/Maschine)',primary:['Hintere Schulter','Trapez'],secondary:['Schultern'],cat:'Rücken'},
-{name:'Überzüge (Kabel/Kurzhantel)',primary:['Lats'],secondary:['Trizeps','Brust'],cat:'Rücken'},
+{name:'Rudern (Maschine)',primary:['Lats'],secondary:['Bizeps','Trapez'],cat:'Rücken'},
+{name:'Rudern (Kurzhantel)',primary:['Trapez'],secondary:['Bizeps','Lats'],cat:'Rücken'},
+{name:'Reverse Flys (Maschine)',primary:['Schultern','Trapez'],secondary:[],cat:'Rücken'},
 {name:'Schulterdrücken',primary:['Schultern'],secondary:['Trizeps'],cat:'Schultern'},
 {name:'Seitheben',primary:['Schultern'],secondary:[],cat:'Schultern'},
-{name:'Face Pull',primary:['Hintere Schulter','Trapez'],secondary:['Schultern'],cat:'Schultern'},
-{name:'Arnold Press',primary:['Schultern'],secondary:['Trizeps'],cat:'Schultern'},
-{name:'Frontheben',primary:['Schultern'],secondary:[],cat:'Schultern'},
-{name:'Bizepscurl (Stange)',primary:['Bizeps'],secondary:['Unterarme'],cat:'Bizeps'},
-{name:'Hammercurl',primary:['Bizeps'],secondary:['Unterarme'],cat:'Bizeps'},
-{name:'Konzentrationscurl',primary:['Bizeps'],secondary:[],cat:'Bizeps'},
-{name:'Trizepsdrücken',primary:['Trizeps'],secondary:[],cat:'Trizeps'},
-{name:'Skull Crusher',primary:['Trizeps'],secondary:[],cat:'Trizeps'},
-{name:'Enges Bankdrücken',primary:['Trizeps'],secondary:['Brust','Schultern'],cat:'Trizeps'},
-{name:'Kniebeuge',primary:['Quadrizeps','Gesäß'],secondary:['Hamstrings','Unterer Rücken'],cat:'Beine'},
-{name:'Beinpresse',primary:['Quadrizeps','Gesäß'],secondary:['Hamstrings'],cat:'Beine'},
-{name:'Rumänisches Kreuzheben',primary:['Hamstrings','Gesäß'],secondary:['Unterer Rücken','Unterarme'],cat:'Beine'},
-{name:'Beinbeuger',primary:['Hamstrings'],secondary:['Waden'],cat:'Beine'},
-{name:'Beinstrecker',primary:['Quadrizeps'],secondary:[],cat:'Beine'},
-{name:'Hip Thrust',primary:['Gesäß'],secondary:['Hamstrings'],cat:'Beine'},
-{name:'Bulgarische Kniebeuge',primary:['Quadrizeps','Gesäß'],secondary:['Hamstrings'],cat:'Beine'},
+{name:'Bizepscurl',primary:['Bizeps'],secondary:[],cat:'Arme'},
+{name:'Trizeps Overheadcurl',primary:['Trizeps'],secondary:[],cat:'Arme'},
+{name:'Kniebeuge',primary:['Quadrizeps'],secondary:['Hamstrings','Unterer Rücken','Gesäß'],cat:'Beine'},
+{name:'Beinpresse',primary:['Quadrizeps'],secondary:['Hamstrings','Gesäß'],cat:'Beine'},
+{name:'Beinbeuger (Maschine)',primary:['Hamstrings'],secondary:['Waden'],cat:'Beine'},
+{name:'Beinstrecker (Maschine)',primary:['Quadrizeps'],secondary:[],cat:'Beine'},
+{name:'Hip Thrust',primary:['Gesäß'],secondary:['Hamstrings','Unterer Rücken'],cat:'Hintere Kette'},
+{name:'Bulgarian Split Squats',primary:['Quadrizeps'],secondary:['Hamstrings', 'Gesäß'],cat:'Beine'},
 {name:'Wadenheben',primary:['Waden'],secondary:[],cat:'Beine'},
-{name:'Plank',primary:['Core'],secondary:['Schultern','Gesäß'],cat:'Core'},
+{name:'Plank',primary:['Core'],secondary:[],cat:'Core'},
 {name:'Crunch',primary:['Core'],secondary:[],cat:'Core'},
 {name:'Beinheben',primary:['Core'],secondary:['Hüftbeuger'],cat:'Core'},
 ];
 
-const EX_CATS = ['Alle','Brust','Rücken','Schultern','Bizeps','Trizeps','Beine','Core'];
+const EX_CATS = ['Alle','Brust','Rücken','Schultern','Arme','Beine','Hintere Kette','Core'];
 
 // Superset color palette
 const SS_COLORS = {A:'#b8ff57',B:'#4fc3f7',C:'#ffd166',D:'#a29bfe',E:'#ff9f43',F:'#fd79a8'};
@@ -1105,9 +1095,9 @@ function renderGym(){
         const workSets=ex.sets.filter(s=>s.type!=='warmup').length;
         ex.primary.forEach(m=>{muscleSets[m]=(muscleSets[m]||0)+workSets;});
       }));
-      const allMuscles=['Brust','Lats','Trapez','Unterer Rücken','Schultern','Bizeps','Trizeps','Quadrizeps','Hamstrings','Gesäß','Core'];
+      const allMuscles=['Brust','Lats','Trapez','Unterer Rücken','Schultern','Bizeps','Trizeps','Quadrizeps','Hamstrings','Gesäß','Core','Waden'];
       const maxSets=Math.max(...Object.values(muscleSets),1);
-      const colors={'Brust':'#4fc3f7','Lats':'#b8ff57','Trapez':'#a8ef47','Unterer Rücken':'#88cc33','Schultern':'#ffd166','Bizeps':'#ff9f43','Trizeps':'#ff6b6b','Quadrizeps':'#a29bfe','Hamstrings':'#fd79a8','Gesäß':'#e17055','Core':'#74b9ff'};
+      const colors={'Brust':'#4fc3f7','Lats':'#b8ff57','Trapez':'#a8ef47','Unterer Rücken':'#88cc33','Schultern':'#ffd166','Bizeps':'#ff9f43','Trizeps':'#ff6b6b','Quadrizeps':'#a29bfe','Hamstrings':'#fd79a8','Gesäß':'#e17055','Core':'#74b9ff', 'Waden':'#00cec9'};
       const trained=allMuscles.filter(m=>muscleSets[m]);
       const untrained=allMuscles.filter(m=>!muscleSets[m]);
       return`<div class="card" style="padding:14px;">

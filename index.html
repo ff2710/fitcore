@@ -956,6 +956,7 @@ ${(()=>{
             <div class="li-title">${fmtDate(r.date)} ${feel}</div>
             <div class="li-sub">${r.km} km · ${r.time} · ${pace} /km</div>
           </div>
+          <button onclick="editRun(${i})" style="background:none;border:none;color:var(--muted2);font-size:16px;cursor:pointer;padding:4px;flex-shrink:0;">✏️</button>
           <button onclick="deleteRun(${i})" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px;flex-shrink:0;">🗑</button>
         </div>
         ${(r.pulsLoad||r.pulsRecovery)?`<div style="display:flex;gap:5px;flex-wrap:wrap;padding-left:52px;">
@@ -1015,6 +1016,44 @@ function deleteRun(i){
   });
 }
 
+function editRun(i){
+  const r=DB.get('runs')[i];
+  selectedFeeling=r.feeling??-1;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-title">Lauf bearbeiten</div>
+    <div class="form-group"><label class="label">Datum</label><input class="input" id="r-date" type="date" value="${r.date}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="label">Distanz (km)</label><input class="input" id="r-km" type="number" step="0.1" value="${r.km}"></div>
+      <div class="form-group"><label class="label">Zeit (mm:ss)</label><input class="input" id="r-time" value="${r.time}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="label">Belastungspuls</label><input class="input" id="r-puls-load" type="number" value="${r.pulsLoad||''}" placeholder="–"></div>
+      <div class="form-group"><label class="label">Erholungspuls</label><input class="input" id="r-puls-recovery" type="number" value="${r.pulsRecovery||''}" placeholder="–"></div>
+    </div>
+    <div class="form-group"><label class="label">Gefühl</label>
+      <div class="feeling-row">
+        ${['😴','😐','😊','💪','🔥'].map((e,j)=>`<div class="feel-btn ${r.feeling===j?'active':''}" onclick="selectFeeling(${j})">${e}</div>`).join('')}
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveEditedRun(${i})">Speichern ✓</button>
+    <button class="btn btn-danger" style="width:100%;margin-top:8px;" onclick="showConfirm('Lauf löschen?',()=>{const runs=DB.get('runs');runs.splice(${i},1);DB.set('runs',runs);closeModal();showView('run');})">Lauf löschen</button>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function saveEditedRun(i){
+  const date=document.getElementById('r-date').value;
+  const km=parseFloat(document.getElementById('r-km').value);
+  const time=document.getElementById('r-time').value;
+  const pulsLoad=document.getElementById('r-puls-load').value;
+  const pulsRecovery=document.getElementById('r-puls-recovery').value;
+  if(!date||!km||!time){showToast('Bitte Datum, km und Zeit eingeben!');return;}
+  const runs=DB.get('runs');
+  runs[i]={date,km,time,pulsLoad:pulsLoad?+pulsLoad:null,pulsRecovery:pulsRecovery?+pulsRecovery:null,feeling:selectedFeeling};
+  DB.set('runs',runs);
+  closeModal();
+  showView('run');
+}
+
 // ════════════════════════════════════════
 //  GYM MODULE
 // ════════════════════════════════════════
@@ -1022,6 +1061,8 @@ let activeSession=null;
 let currentExIdx=-1;
 let exFilterCat='Alle';
 let exSearch='';
+let templateDraft=null;
+let editWorkoutBuffer=null;
 
 function renderGym(){
   const workouts=DB.get('workouts');
@@ -1034,19 +1075,23 @@ function renderGym(){
     <button class="btn btn-primary" style="width:auto;padding:10px 18px;font-size:14px;" onclick="startSession()">+ Training</button>
   </div>
   <div class="section">
-    <div class="section-title">Zuletzt</div>
+    <div class="section-title">Verlauf</div>
     ${workouts.length===0?`<div class="empty"><div class="empty-icon">🏋️</div><div class="empty-title">Noch kein Training</div><div class="empty-sub">Starte dein erstes Training!</div></div>`:''}
-    ${workouts.slice(0,10).map((w,i)=>{
+    ${workouts.map((w,i)=>{
       const totalSets=w.exercises.reduce((s,e)=>s+e.sets.length,0);
       const exNames=w.exercises.map(e=>e.name).join(', ');
-      return`<div class="list-item" onclick="openModal('workoutDetail',${i})">
-        <div class="li-icon">🏋️</div>
-        <div class="li-main">
+      return`<div class="list-item">
+        <div class="li-icon" onclick="openModal('workoutDetail',${i})" style="cursor:pointer;">🏋️</div>
+        <div class="li-main" onclick="openModal('workoutDetail',${i})" style="cursor:pointer;min-width:0;">
           <div class="li-title">${fmtDate(w.date)}</div>
-          <div class="li-sub">${w.exercises.length} Übungen · ${totalSets} Sets · ${exNames.slice(0,40)}${exNames.length>40?'...':''}</div>
+          <div class="li-sub">${w.exercises.length} Übungen · ${totalSets} Sets</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${exNames.slice(0,55)}${exNames.length>55?'...':''}</div>
         </div>
-        <div class="li-right" style="color:var(--muted2);font-size:20px;">›</div>
-      </div>`;
+        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;margin-left:8px;">
+          <button onclick="editWorkout(${i})" style="background:none;border:none;color:var(--muted2);font-size:16px;cursor:pointer;padding:4px;">✏️</button>
+          <button onclick="showConfirm('Training löschen?',()=>{const w=DB.get('workouts');w.splice(${i},1);DB.set('workouts',w);showView('gym');})" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px;">🗑</button>
+        </div>
+      </div>;
     }).join('')}
   </div>
   <div class="section">
@@ -1072,7 +1117,10 @@ function renderGym(){
     })()}
   </div>
   <div class="section">
-    <div class="section-title">Vorlagen</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="section-title" style="margin:0;">Vorlagen</div>
+      <button onclick="openNewTemplateDraft()" style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);border-radius:var(--r-sm);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">+ Neu</button>
+    </div>
     ${(()=>{
       const tmpl=DB.get('templates');
       if(!tmpl.length) return`<div style="font-size:13px;color:var(--muted2);padding:10px 0;">Noch keine Vorlagen – nach dem Training auf "Als Vorlage speichern" tippen.</div>`;
@@ -1221,6 +1269,10 @@ function renderSessionExercise(ex, ei, inSuperset){
         <button onclick="removeExercise(${ei})" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;">✕</button>
       </div>
     </div>
+    ${ex.targetNote?`<div style="margin-bottom:8px;padding:8px 10px;background:rgba(184,255,87,0.06);border-radius:6px;border:1px solid rgba(184,255,87,0.15);display:flex;align-items:center;gap:10px;">
+      <span style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1px;flex-shrink:0;">ZIEL</span>
+      <span style="font-size:13px;font-weight:600;color:var(--accent);">${ex.targetNote}</span>
+    </div>`:''}
     ${lastArr&&lastArr.length?`<div style="margin-bottom:8px;padding:8px 10px;background:rgba(79,195,247,0.06);border-radius:6px;border:1px solid rgba(79,195,247,0.15);">
       <div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:1px;margin-bottom:4px;">LETZTES MAL</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
@@ -1246,7 +1298,7 @@ function renderSetRow(ei, si, s, ex){
   const hint = lastSets && lastSets[si] ? `${lastSets[si].weight}kg×${lastSets[si].reps}` : '';
   return`
   <div id="setrow-${ei}-${si}" style="margin-bottom:8px;">
-    <div style="display:grid;grid-template-columns:32px auto 1fr 1fr 28px;gap:6px;align-items:center;">
+    <div style="display:grid;grid-template-columns:32px auto 1fr 0.75fr 28px;gap:6px;align-items:center;">
       <div class="set-num ${s.done?'done':''}" onclick="toggleSet(${ei},${si})">${s.done?'✓':si+1}</div>
       <div style="display:flex;flex-direction:column;gap:1px;">
         ${typeLbl?`<span class="set-type ${s.type}">${typeLbl}</span>`:'<div style="width:36px;"></div>'}
@@ -1313,6 +1365,7 @@ function startFromTemplate(i){
     exercises:t.exercises.map(ex=>({
       name:ex.name,primary:ex.primary,secondary:ex.secondary,
       supersetId:ex.supersetId||null,
+      targetNote:ex.targetNote||'',
       sets:ex.sets.map(s=>({weight:s.weight,reps:s.reps,type:s.type||'normal',done:false}))
     })),
     date:today()
@@ -1341,6 +1394,75 @@ function finishSession(){
   });
   DB.set('workouts',workouts);
   activeSession=null;
+  showView('gym');
+}
+
+function editWorkout(i){
+  const workouts=DB.get('workouts');
+  editWorkoutBuffer=JSON.parse(JSON.stringify(workouts[i]));
+  editWorkoutBuffer._idx=i;
+  renderEditWorkoutModal();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function renderEditWorkoutModal(){
+  const w=editWorkoutBuffer;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-title">Training bearbeiten</div>
+    <div class="form-group">
+      <label class="label">Datum</label>
+      <input class="input" id="ew-date" type="date" value="${w.date}" oninput="editWorkoutBuffer.date=this.value">
+    </div>
+    ${w.exercises.map((ex,ei)=>`
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-bottom:10px;">
+        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;margin-bottom:8px;">${ex.name}</div>
+        ${ex.sets.map((s,si)=>`
+          <div style="display:grid;grid-template-columns:auto 1fr 1fr 28px;gap:8px;align-items:center;margin-bottom:6px;">
+            <span style="font-size:11px;color:var(--muted2);min-width:38px;">${s.type&&s.type!=='normal'?`<span class="set-type ${s.type}" style="font-size:9px;">${s.type.toUpperCase()}</span>`:`Set ${si+1}`}</span>
+            <div class="num-input-wrap">
+              <button class="num-btn" onclick="ewChangeVal(${ei},${si},'weight',-2.5)">−</button>
+              <div class="num-val" id="ew-w-${ei}-${si}">${s.weight}</div>
+              <button class="num-btn" onclick="ewChangeVal(${ei},${si},'weight',2.5)">+</button>
+            </div>
+            <div class="num-input-wrap">
+              <button class="num-btn" onclick="ewChangeVal(${ei},${si},'reps',-1)">−</button>
+              <div class="num-val" id="ew-r-${ei}-${si}">${s.reps}</div>
+              <button class="num-btn" onclick="ewChangeVal(${ei},${si},'reps',1)">+</button>
+            </div>
+            <button class="set-delete" onclick="ewDeleteSet(${ei},${si})">✕</button>
+          </div>`).join('')}
+      </div>`).join('')}
+    <button class="btn btn-primary" onclick="saveEditedWorkout()">Speichern ✓</button>
+    <button class="btn btn-danger" style="width:100%;margin-top:8px;" onclick="showConfirm('Training löschen?',()=>{const ww=DB.get('workouts');ww.splice(${w._idx},1);DB.set('workouts',ww);closeModal();showView('gym');})">Training löschen</button>`;
+}
+
+function ewChangeVal(ei,si,field,delta){
+  const s=editWorkoutBuffer.exercises[ei].sets[si];
+  if(field==='weight') s.weight=Math.max(0,Math.round((s.weight+delta)*10)/10);
+  else s.reps=Math.max(1,s.reps+delta);
+  const el=document.getElementById(field==='weight'?`ew-w-${ei}-${si}`:`ew-r-${ei}-${si}`);
+  if(el){el.textContent=s[field];el.classList.add('pop');setTimeout(()=>el.classList.remove('pop'),250);}
+}
+
+function ewDeleteSet(ei,si){
+  editWorkoutBuffer.exercises[ei].sets.splice(si,1);
+  if(!editWorkoutBuffer.exercises[ei].sets.length){
+    editWorkoutBuffer.exercises.splice(ei,1);
+  }
+  renderEditWorkoutModal();
+}
+
+function saveEditedWorkout(){
+  const date=document.getElementById('ew-date').value;
+  if(!date){showToast('Bitte Datum eingeben!');return;}
+  editWorkoutBuffer.date=date;
+  const workouts=DB.get('workouts');
+  const{_idx,...toSave}=editWorkoutBuffer;
+  workouts[_idx]=toSave;
+  DB.set('workouts',workouts);
+  editWorkoutBuffer=null;
+  showToast('Gespeichert!','success');
+  closeModal();
   showView('gym');
 }
 
@@ -1384,6 +1506,94 @@ function deleteTemplate(i){
     closeModal();showView('gym');
   });
 }
+
+function openNewTemplateDraft(){
+  templateDraft={name:'',exercises:[]};
+  renderTemplateDraftModal();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function renderTemplateDraftModal(){
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-title">Vorlage erstellen</div>
+    <div class="form-group">
+      <label class="label">Name der Vorlage</label>
+      <input class="input" id="tmpl-new-name" placeholder="z.B. Push A" value="${templateDraft.name||''}">
+    </div>
+    ${templateDraft.exercises.length?`<div style="margin-bottom:12px;">
+      ${templateDraft.exercises.map((ex,i)=>`
+        <div style="padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-weight:600;font-size:13px;">${ex.name}</div>
+            <button onclick="removeDraftEx(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;">✕</button>
+          </div>
+          <input class="input" placeholder="Ziel z.B. 3x 8-10 oder 4x 6" value="${ex.targetNote||''}"
+            oninput="templateDraft.exercises[${i}].targetNote=this.value"
+            style="font-size:13px;padding:8px 10px;">
+        </div>`).join('')}
+    </div>`:`<div style="text-align:center;padding:20px;font-size:13px;color:var(--muted2);">Noch keine Übungen hinzugefügt.</div>`}
+    <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" onclick="openExPickerForDraft()">+ Übung hinzufügen</button>
+    <button class="btn btn-primary" onclick="saveNewTemplate()">Vorlage speichern</button>`;
+}
+
+function openExPickerForDraft(){
+  templateDraft.name=document.getElementById('tmpl-new-name')?.value||templateDraft.name;
+  exFilterCat='Alle';exSearch='';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="modal-title">Übung hinzufügen</div>
+    <input class="input" placeholder="Suchen..." oninput="exSearch=this.value;document.getElementById('ex-list-draft').innerHTML=renderExListForDraft()" style="margin-bottom:12px;">
+    <div class="ex-filter">
+      ${EX_CATS.map(c=>`<div class="filter-chip ${c==='Alle'?'active':''}" onclick="exFilterCat='${c}';document.querySelectorAll('.ex-filter .filter-chip').forEach(x=>x.classList.toggle('active',x.textContent==='${c}'));document.getElementById('ex-list-draft').innerHTML=renderExListForDraft()">${c}</div>`).join('')}
+    </div>
+    <div id="ex-list-draft">${renderExListForDraft()}</div>`;
+}
+
+function renderExListForDraft(){
+  const filtered=EXERCISES.filter(e=>(exFilterCat==='Alle'||e.cat===exFilterCat)&&(!exSearch||e.name.toLowerCase().includes(exSearch.toLowerCase())));
+  if(!filtered.length) return`<div style="text-align:center;padding:20px;color:var(--muted2);">Keine Übungen gefunden</div>`;
+  return filtered.map(e=>`
+    <div class="ex-item" onclick="addExerciseToTemplateDraft('${e.name}')">
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:14px;">${e.name}</div>
+        <div>${e.primary.map(m=>`<span class="muscle-tag primary">${m}</span>`).join('')}</div>
+      </div>
+      <div style="color:var(--accent);font-size:20px;">+</div>
+    </div>`).join('');
+}
+
+function addExerciseToTemplateDraft(name){
+  const ex=EXERCISES.find(e=>e.name===name);
+  if(!ex)return;
+  templateDraft.exercises.push({name:ex.name,primary:ex.primary,secondary:ex.secondary,targetNote:''});
+  renderTemplateDraftModal();
+}
+
+function removeDraftEx(i){
+  templateDraft.exercises.splice(i,1);
+  renderTemplateDraftModal();
+}
+
+function saveNewTemplate(){
+  const nameEl=document.getElementById('tmpl-new-name');
+  const name=(nameEl?nameEl.value:templateDraft.name).trim();
+  if(!name){showToast('Bitte einen Namen eingeben!');return;}
+  if(!templateDraft.exercises.length){showToast('Bitte mindestens eine Übung hinzufügen!');return;}
+  const tmpl=DB.get('templates');
+  tmpl.push({
+    name,
+    exercises:templateDraft.exercises.map(ex=>({
+      name:ex.name,primary:ex.primary,secondary:ex.secondary,
+      supersetId:null,targetNote:ex.targetNote||'',
+      sets:[{weight:60,reps:10,type:'normal'}]
+    }))
+  });
+  DB.set('templates',tmpl);
+  templateDraft=null;
+  showToast('Vorlage erstellt!','success');
+  closeModal();
+  showView('gym');
+}
+  
 function renameTmpl(i,name){
   if(!name.trim())return;
   const tmpl=DB.get('templates');
@@ -1399,6 +1609,14 @@ function removeTmplEx(ti,ei){
   DB.set('templates',tmpl);
   openModal('editTemplate',ti);
 }
+
+function updateTmplTargetNote(ti,ei,val){
+  const tmpl=DB.get('templates');
+  if(!tmpl[ti]||!tmpl[ti].exercises[ei])return;
+  tmpl[ti].exercises[ei].targetNote=val;
+  DB.set('templates',tmpl);
+}
+  
 function saveTemplateWithName(name){
   if(!name.trim()||!activeSession)return;
   const tmpl=DB.get('templates');
@@ -1899,6 +2117,9 @@ function openModal(type,arg){
             <div>
               <div style="font-weight:600;font-size:13px;">${ex.name}${ex.supersetId?` <span style="font-size:10px;color:${SS_COLORS[ex.supersetId]||'var(--accent)'};font-weight:700;">SS-${ex.supersetId}</span>`:''}</div>
               <div style="font-size:11px;color:var(--muted2);">${ex.sets.length} Sätze</div>
+              <input class="input" value="${ex.targetNote||''}" placeholder="Ziel z.B. 3x 8-10"
+                oninput="updateTmplTargetNote(${arg},${ei},this.value)"
+                style="font-size:12px;padding:6px 10px;margin-top:6px;">
             </div>
             <button onclick="removeTmplEx(${arg},${ei})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
           </div>`).join('')}

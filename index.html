@@ -586,11 +586,7 @@ function getPR(exName){
   });
   return bestWeight>0?{weight:bestWeight,reps:bestReps}:null;
 }
-function checkIsPR(exName, weight, reps){
-  const pr=getPR(exName);
-  if(!pr)return true;
-  return weight>pr.weight||(weight===pr.weight&&reps>pr.reps);
-}
+
 
 // ════════════════════════════════════════
 //  REST TIMER
@@ -1735,21 +1731,6 @@ function toggleSet(ei,si){
   const exEl=activeSession.exercises[ei];
   const num=document.getElementById(`setrow-${ei}-${si}`)?.querySelector('.set-num');
   if(num){num.classList.toggle('done',s.done);num.textContent=s.done?'✓':si+1;}
-
-  if(s.done){
-    // PR check
-    if(s.type!=='warmup'&&checkIsPR(exEl.name,s.weight,s.reps)){
-      const row=document.getElementById(`setrow-${ei}-${si}`);
-      if(row){
-        const existing=row.querySelector('.pr-badge');
-        if(!existing){
-          const badge=document.createElement('span');
-          badge.className='pr-badge';
-          badge.innerHTML='🏆 PR!';
-          badge.style.marginLeft='8px';
-          row.querySelector('.set-num').after(badge);
-        }
-      }
     }
 
     // Smart rest timer

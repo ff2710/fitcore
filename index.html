@@ -1503,28 +1503,82 @@ function openNewTemplateDraft(){
   document.getElementById('modal-overlay').classList.add('open');
 }
 
-function renderTemplateDraftModal(){
+  
+  function renderTemplateDraftModal(){
   document.getElementById('modal-body').innerHTML=`
     <div class="modal-title">Vorlage erstellen</div>
+
     <div class="form-group">
       <label class="label">Name der Vorlage</label>
       <input class="input" id="tmpl-new-name" placeholder="z.B. Push A" value="${templateDraft.name||''}">
     </div>
-    ${templateDraft.exercises.length?`<div style="margin-bottom:12px;">
+
+    ${templateDraft.exercises.length?`
+    <div style="margin-bottom:12px;">
       ${templateDraft.exercises.map((ex,i)=>`
         <div style="padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;">
+
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <div style="font-weight:600;font-size:13px;">${ex.name}</div>
-            <button onclick="removeDraftEx(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;">✕</button>
+            <button onclick="removeDraftEx(${i})"
+              style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;">✕</button>
           </div>
-          <input class="input" placeholder="Ziel z.B. 3x 8-10 oder 4x 6" value="${ex.targetNote||''}"
+
+          <!-- Sets Anzeige -->
+          ${ex.sets && ex.sets.length ? `
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+              ${ex.sets.map(s=>`
+                <span style="
+                  font-size:11px;
+                  padding:4px 8px;
+                  border-radius:12px;
+                  background:var(--card);
+                  border:1px solid var(--border);
+                  color:${s.type==='warmup'?'#74b9ff':s.type==='dropset'?'#ff7675':'var(--text)'};
+                ">
+                  ${s.type==='warmup'?'WU ':s.type==='dropset'?'DS ':''}${s.reps}x${s.weight}
+                </span>
+              `).join('')}
+            </div>
+          ` : ``}
+
+          <!-- BUTTONS -->
+          <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <button onclick="addTemplateSet(${i},'normal')" 
+              style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px;font-size:11px;cursor:pointer;">
+              + Satz
+            </button>
+            <button onclick="addTemplateSet(${i},'warmup')" 
+              style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px;font-size:11px;cursor:pointer;">
+              Warmup
+            </button>
+            <button onclick="addTemplateSet(${i},'dropset')" 
+              style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px;font-size:11px;cursor:pointer;">
+              Drop
+            </button>
+          </div>
+
+          <!-- Ziel-Notiz -->
+          <input class="input" 
+            placeholder="Ziel z.B. 3x 8-10 oder 4x 6" 
+            value="${ex.targetNote||''}"
             oninput="templateDraft.exercises[${i}].targetNote=this.value"
             style="font-size:13px;padding:8px 10px;">
-        </div>`).join('')}
-    </div>`:`<div style="text-align:center;padding:20px;font-size:13px;color:var(--muted2);">Noch keine Übungen hinzugefügt.</div>`}
-    <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" onclick="openExPickerForDraft()">+ Übung hinzufügen</button>
-    <button class="btn btn-primary" onclick="saveNewTemplate()">Vorlage speichern</button>`;
+        </div>
+      `).join('')}
+    </div>
+    ` : `
+      <div style="text-align:center;padding:20px;font-size:13px;color:var(--muted2);">
+        Noch keine Übungen hinzugefügt.
+      </div>
+    `}
+    <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" onclick="openExPickerForDraft()">
+      + Übung hinzufügen
+    </button>
+    <button class="btn btn-primary" onclick="saveNewTemplate()">Vorlage speichern</button>
+  `;
 }
+
 
 function openExPickerForDraft(){
   templateDraft.name=document.getElementById('tmpl-new-name')?.value||templateDraft.name;
@@ -1545,7 +1599,7 @@ function renderExListForDraft(){
     <div class="ex-item" onclick="addExerciseToTemplateDraft('${e.name}')">
       <div style="flex:1;">
         <div style="font-weight:600;font-size:14px;">${e.name}</div>
-        <div>${e.primary.map(m=>`<span class="muscle-tag primary">${m}</span>`).join('')}</div>
+        <div>   ${e.primary.map(m=>`<span class="muscle-tag primary">${m}</span>`).join('')}   ${e.secondary.map(m=>`<span class="muscle-tag">${m}</span>`).join('')} </div>
       </div>
       <div style="color:var(--accent);font-size:20px;">+</div>
     </div>`).join('');
@@ -1554,31 +1608,63 @@ function renderExListForDraft(){
 function addExerciseToTemplateDraft(name){
   const ex=EXERCISES.find(e=>e.name===name);
   if(!ex)return;
-  templateDraft.exercises.push({name:ex.name,primary:ex.primary,secondary:ex.secondary,targetNote:''});
+  templateDraft.exercises.push({
+  name: ex.name,
+  primary: ex.primary,
+  secondary: ex.secondary,
+  supersetId: null,
+  targetNote: '',
+  sets: [
+    { weight:60, reps:10, type:'normal' }
+  ]
+});
+  renderTemplateDraftModal();
+}
+
+function addTemplateSet(ei,type){
+  const ex = templateDraft.exercises[ei];
+  const last = ex.sets.at(-1);
+  ex.sets.push({
+    weight: last ? last.weight : 60,
+    reps: last ? last.reps : 8,
+    type
+  });
   renderTemplateDraftModal();
 }
 
 function removeDraftEx(i){
   templateDraft.exercises.splice(i,1);
-  renderTemplateDraftModal();
-}
-
+  renderTemplateDraftModal();}
 function saveNewTemplate(){
-  const nameEl=document.getElementById('tmpl-new-name');
-  const name=(nameEl?nameEl.value:templateDraft.name).trim();
-  if(!name){showToast('Bitte einen Namen eingeben!');return;}
-  if(!templateDraft.exercises.length){showToast('Bitte mindestens eine Übung hinzufügen!');return;}
-  const tmpl=DB.get('templates');
+  const nameEl = document.getElementById('tmpl-new-name');
+  const name = (nameEl ? nameEl.value : templateDraft.name).trim();
+  if(!name){
+    showToast('Bitte einen Namen eingeben!');
+    return;}
+  if(!templateDraft.exercises.length){
+    showToast('Bitte mindestens eine Übung hinzufügen!');
+    return;
+  }
+  const tmpl = DB.get('templates');
   tmpl.push({
     name,
-    exercises:templateDraft.exercises.map(ex=>({
-      name:ex.name,primary:ex.primary,secondary:ex.secondary,
-      supersetId:null,targetNote:ex.targetNote||'',
-      sets:[{weight:60,reps:10,type:'normal'}]
+    exercises: templateDraft.exercises.map(ex=>({
+      name: ex.name,
+      primary: ex.primary,
+      secondary: ex.secondary,
+      supersetId: ex.supersetId || null,
+      targetNote: ex.targetNote || '',
+      sets: (ex.sets || []).map(s=>({
+        weight: s.weight,
+        reps: s.reps,
+        type: s.type
+      }))
     }))
   });
-  DB.set('templates',tmpl);
-  templateDraft=null;
+
+  DB.set('templates', tmpl);
+  templateDraft = null;
+
   showToast('Vorlage erstellt!','success');
   closeModal();
   showView('gym');

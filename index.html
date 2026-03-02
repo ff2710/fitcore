@@ -1725,36 +1725,38 @@ function removeExercise(ei){
   showView('gym');
 }
 
-function toggleSet(ei,si){
-  const s=activeSession.exercises[ei].sets[si];
-  s.done=!s.done;
-  const exEl=activeSession.exercises[ei];
-  const num=document.getElementById(`setrow-${ei}-${si}`)?.querySelector('.set-num');
-  if(num){num.classList.toggle('done',s.done);num.textContent=s.done?'✓':si+1;}
-    }
+function toggleSet(ei, si){
+  const s = activeSession.exercises[ei].sets[si];
+  s.done = !s.done;
+  const exEl = activeSession.exercises[ei];
+  const num = document.getElementById(`setrow-${ei}-${si}`)?.querySelector('.set-num');
 
-    // Smart rest timer
-    if(s.type!=='warmup'){
-      if(exEl.supersetId){
-        const cfg=DB.getObj('settings',{});
-        const ssRest = cfg.supersetRestTime ? +cfg.supersetRestTime : 30;
-        // Check if partner's same set index is already done
-        const partners = activeSession.exercises.filter((e,i)=>e.supersetId===exEl.supersetId&&i!==ei);
-        const partnersDone = partners.every(p=>p.sets[si]&&p.sets[si].done);
-        if(partnersDone){
-          // Full round done → normal rest
-          startRestTimer(null);
-        } else {
-          // Between exercises in superset → short pause
-          startRestTimer(ssRest);
-        }
-      } else {
+  if(num){
+    num.classList.toggle('done', s.done);
+    num.textContent = s.done ? '✓' : si+1;
+  }
+
+  // Smart rest timer
+  if(s.type !== 'warmup'){
+    if(exEl.supersetId){
+      const cfg = DB.getObj('settings', {});
+      const ssRest = cfg.supersetRestTime ? +cfg.supersetRestTime : 30;
+      // Check if partner's same set index is already done
+      const partners = activeSession.exercises.filter((e,i) => e.supersetId === exEl.supersetId && i !== ei);
+      const partnersDone = partners.every(p => p.sets[si] && p.sets[si].done);
+      if(partnersDone){
+        // Full round done → normal rest
         startRestTimer(null);
+      } else {
+        // Between exercises in superset → short pause
+        startRestTimer(ssRest);
       }
+    } else {
+      startRestTimer(null);
     }
   } else {
     // Undo: remove PR badge
-    const row=document.getElementById(`setrow-${ei}-${si}`);
+    const row = document.getElementById(`setrow-${ei}-${si}`);
     row?.querySelector('.pr-badge')?.remove();
   }
 }

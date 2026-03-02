@@ -1091,7 +1091,7 @@ function renderGym(){
           <button onclick="editWorkout(${i})" style="background:none;border:none;color:var(--muted2);font-size:16px;cursor:pointer;padding:4px;">✏️</button>
           <button onclick="showConfirm('Training löschen?',()=>{const w=DB.get('workouts');w.splice(${i},1);DB.set('workouts',w);showView('gym');})" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px;">🗑</button>
         </div>
-      </div>;
+      </div>`
     }).join('')}
   </div>
   <div class="section">
